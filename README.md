@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="client/public/farmerd.webp" alt="Farmers App Banner" width="100%">
+</p>
+
 🧑‍🌾 Farmers App
   A full-stack web application that connects farmers directly with customers.
   This platform enables farmers to sell fresh produce online and helps buyers browse, order, and communicate effortlessly — all through a modern, responsive interface.
