@@ -1,0 +1,14 @@
+{
+  "name": "farmers-app",
+  "version": "1.0.0",
+  "description": "Farmers Marketplace Application",
+  "private": true,
+  "scripts": {
+    "install:vercel": "cd server && npm install && cd ../client && npm install",
+    "build:vercel": "cd client && npm run build"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
+

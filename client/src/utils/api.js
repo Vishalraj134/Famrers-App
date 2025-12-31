@@ -91,4 +91,23 @@ export const notificationAPI = {
   deleteNotification: (id) => api.delete(`/notifications/${id}`),
 };
 
+/**
+ * Get the full image URL
+ * Handles both local paths (/uploads/...) and cloud URLs (https://...)
+ * @param {string} imageUrl - Image URL from the database
+ * @returns {string} - Full image URL
+ */
+export const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
+  
+  // If it's already a full URL (http:// or https://), return it as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Otherwise, construct the full URL from the API base URL
+  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+  return `${baseUrl}${imageUrl}`;
+};
+
 export default api;

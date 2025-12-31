@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { productAPI } from '../utils/api';
+import { productAPI, getImageUrl } from '../utils/api';
 import { Upload, X, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -30,7 +30,7 @@ const ProductForm = ({ product, onSuccess, onCancel }) => {
         description: product.description || '',
       });
       if (product.image_url) {
-        setImagePreview(`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${product.image_url}`);
+        setImagePreview(getImageUrl(product.image_url));
       }
     }
   }, [product]);
@@ -79,7 +79,7 @@ const ProductForm = ({ product, onSuccess, onCancel }) => {
 
   const removeImage = () => {
     setImage(null);
-    setImagePreview(product?.image_url ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${product.image_url}` : null);
+    setImagePreview(product?.image_url ? getImageUrl(product.image_url) : null);
   };
 
   const validateForm = () => {

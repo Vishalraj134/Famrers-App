@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { productAPI, orderAPI } from '../utils/api';
+import { productAPI, orderAPI, getImageUrl } from '../utils/api';
 import { useCart } from '../contexts/CartContext';
 import { ArrowLeft, Package, User, DollarSign, ShoppingCart, AlertCircle, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -128,7 +128,7 @@ const ProductDetails = () => {
           <div className="space-y-4">
             {product.image_url ? (
               <img
-                src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${product.image_url}`}
+                src={getImageUrl(product.image_url)}
                 alt={product.name}
                 className="w-full h-96 object-cover rounded-lg shadow-lg"
                 onError={(e) => {

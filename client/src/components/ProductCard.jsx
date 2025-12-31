@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Package, User, DollarSign, ShoppingCart, Eye } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import { getImageUrl } from '../utils/api';
 import toast from 'react-hot-toast';
 
 const ProductCard = ({ product }) => {
@@ -24,7 +25,7 @@ const ProductCard = ({ product }) => {
       <div className="relative overflow-hidden rounded-2xl mb-6 image-hover">
         {product.image_url ? (
           <img
-            src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${product.image_url}`}
+            src={getImageUrl(product.image_url)}
             alt={product.name}
             className="w-full h-48 object-cover rounded-2xl group-hover:scale-110 transition-transform duration-500"
             onError={(e) => {

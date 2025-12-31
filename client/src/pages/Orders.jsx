@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { orderAPI } from '../utils/api';
+import { orderAPI, getImageUrl } from '../utils/api';
 import { Package, User, Calendar, DollarSign, CheckCircle, Clock, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -222,7 +222,7 @@ const Orders = () => {
                       <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
                         {order.product.image_url ? (
                           <img
-                            src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${order.product.image_url}`}
+                            src={getImageUrl(order.product.image_url)}
                             alt={order.product.name}
                             className="w-12 h-12 object-cover rounded-lg"
                             onError={(e) => {

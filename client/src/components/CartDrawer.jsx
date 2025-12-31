@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import { getImageUrl } from '../utils/api';
 
 const CartDrawer = ({ open, onClose }) => {
   const { items, removeItem, updateQty, totals, clear } = useCart();
@@ -21,7 +22,7 @@ const CartDrawer = ({ open, onClose }) => {
               {items.map(({ product, quantity }) => (
                 <li key={product.id} className="flex items-center justify-between gap-3 border-b pb-3">
                   <div className="flex items-center gap-3">
-                    <img src={`${import.meta.env.VITE_API_URL?.replace('/api','')||'http://localhost:5000'}${product.image_url}`} alt={product.name} className="w-14 h-14 object-cover rounded" onError={(e)=>{e.target.src='https://via.placeholder.com/56'}} />
+                    <img src={getImageUrl(product.image_url)} alt={product.name} className="w-14 h-14 object-cover rounded" onError={(e)=>{e.target.src='https://via.placeholder.com/56'}} />
                     <div>
                       <p className="font-medium text-gray-900">{product.name}</p>
                       <p className="text-sm text-gray-500">${Number(product.price).toFixed(2)}</p>
