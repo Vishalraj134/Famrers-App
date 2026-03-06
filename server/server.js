@@ -38,14 +38,25 @@ const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 const { initializeSocket } = require('./config/socket');
 
 const app = express();
-const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
-// Initialize Socket.IO
-const io = initializeSocket(server);
+// Only initialize HTTP server and Socket.IO in non-serverless environments
+// Vercel serverless functions don't support persistent HTTP servers
+let server;
+let io;
 
-// Make io available globally for use in controllers
-global.io = io;
+if (process.env.VERCEL !== '1') {
+  // Traditional server mode (development/local)
+  server = http.createServer(app);
+  io = initializeSocket(server);
+  global.io = io;
+} else {
+  // Serverless mode (Vercel)
+  // Socket.IO won't work in serverless, so we'll disable it
+  // Consider using alternative real-time solutions for production
+  global.io = null;
+  console.log('Running in serverless mode - Socket.IO disabled');
+}
 
 // Security middleware
 app.use(helmet());
@@ -124,33 +135,56 @@ app.use(notFound);
 // Error handling middleware
 app.use(errorHandler);
 
-// Test database connection and start server
+// Test database connection and start server (only in non-serverless mode)
 const startServer = async () => {
   try {
     await testConnection();
     
-    server.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
-      console.log(`WebSocket server initialized`);
-    });
+    if (server) {
+      server.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`Health check: http://localhost:${PORT}/health`);
+        if (io) {
+          console.log(`WebSocket server initialized`);
+        }
+      });
+    } else {
+      // Serverless mode - just test connection
+      await testConnection();
+      console.log('Serverless function ready');
+    }
   } catch (error) {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    if (process.env.VERCEL !== '1') {
+      process.exit(1);
+    }
+    // In serverless mode, don't exit - let Vercel handle it
   }
 };
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log('Unhandled Promise Rejection:', err.message);
-  process.exit(1);
-});
+// Only start server if not in Vercel serverless environment
+if (process.env.VERCEL !== '1') {
+  // Handle unhandled promise rejections (only in traditional server mode)
+  process.on('unhandledRejection', (err, promise) => {
+    console.log('Unhandled Promise Rejection:', err.message);
+    process.exit(1);
+  });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.log('Uncaught Exception:', err.message);
-  process.exit(1);
-});
+  // Handle uncaught exceptions (only in traditional server mode)
+  process.on('uncaughtException', (err) => {
+    console.log('Uncaught Exception:', err.message);
+    process.exit(1);
+  });
 
-startServer();
+  startServer();
+} else {
+  // In serverless mode, test connection on cold start
+  // Connection will be reused across invocations
+  testConnection().catch(err => {
+    console.error('Database connection error (serverless):', err.message);
+  });
+}
+
+// Export the app for Vercel serverless functions
+module.exports = app;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { productAPI } from '../utils/api';
+import { productAPI, getImageUrl } from '../utils/api';
 import { Plus, Edit, Trash2, Package, DollarSign, TrendingUp, Eye } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import ProductForm from '../components/ProductForm';
@@ -196,7 +196,7 @@ const Dashboard = () => {
                       <div className="aspect-w-16 aspect-h-9 mb-4">
                         {product.image_url ? (
                           <img
-                            src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${product.image_url}`}
+                            src={getImageUrl(product.image_url)}
                             alt={product.name}
                             className="w-full h-48 object-cover rounded-lg"
                             onError={(e) => {

@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const path = require('path');
 const fs = require('fs');
+const { uploadToCloudinary, deleteFromCloudinary, isCloudinaryUrl } = require('../config/cloudStorage');
 
 // Get all products with filtering and pagination
 const getProducts = async (req, res, next) => {
@@ -130,7 +131,30 @@ const createProduct = async (req, res, next) => {
     // Handle image upload
     let image_url = null;
     if (req.file) {
-      image_url = `/uploads/${req.file.filename}`;
+      // Check if we should use cloud storage (production/Vercel or if Cloudinary is configured)
+      const useCloudStorage = process.env.NODE_ENV === 'production' || 
+                              (process.env.CLOUDINARY_CLOUD_NAME && 
+                               process.env.CLOUDINARY_API_KEY && 
+                               process.env.CLOUDINARY_API_SECRET);
+
+      if (useCloudStorage && req.file.buffer) {
+        // Upload to Cloudinary (memory storage)
+        try {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          const ext = path.extname(req.file.originalname);
+          const filename = `product-${uniqueSuffix}${ext}`;
+          image_url = await uploadToCloudinary(req.file.buffer, filename, 'products');
+        } catch (uploadError) {
+          console.error('Cloudinary upload error:', uploadError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to upload image. Please try again.'
+          });
+        }
+      } else {
+        // Local file storage (development)
+        image_url = `/uploads/${req.file.filename}`;
+      }
     }
 
     const product = await Product.create({
@@ -160,12 +184,22 @@ const createProduct = async (req, res, next) => {
       data: { product: createdProduct }
     });
   } catch (error) {
-    // If there's an error and a file was uploaded, delete it
+    // If there's an error and a file was uploaded, try to clean it up
     if (req.file) {
-      const filePath = path.join(__dirname, '..', 'uploads', req.file.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const useCloudStorage = process.env.NODE_ENV === 'production' || 
+                              (process.env.CLOUDINARY_CLOUD_NAME && 
+                               process.env.CLOUDINARY_API_KEY && 
+                               process.env.CLOUDINARY_API_SECRET);
+      
+      if (!useCloudStorage || !req.file.buffer) {
+        // Local file cleanup
+        const filePath = path.join(__dirname, '..', 'uploads', req.file.filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
+      // Note: Cloudinary uploads are already done, so we can't easily rollback
+      // In production, you might want to implement a cleanup job
     }
     next(error);
   }
@@ -192,15 +226,44 @@ const updateProduct = async (req, res, next) => {
     if (req.file) {
       // Delete old image if it exists
       if (product.image_url) {
-        // product.image_url is "/uploads/<file>", ensure proper resolution on all OSes
-        const normalizedOld = product.image_url.startsWith('/uploads/')
-          ? path.join(__dirname, '..', 'uploads', path.basename(product.image_url))
-          : path.join(__dirname, '..', product.image_url);
-        if (fs.existsSync(normalizedOld)) {
-          fs.unlinkSync(normalizedOld);
+        if (isCloudinaryUrl(product.image_url)) {
+          // Delete from Cloudinary
+          await deleteFromCloudinary(product.image_url);
+        } else {
+          // Delete local file
+          const normalizedOld = product.image_url.startsWith('/uploads/')
+            ? path.join(__dirname, '..', 'uploads', path.basename(product.image_url))
+            : path.join(__dirname, '..', product.image_url);
+          if (fs.existsSync(normalizedOld)) {
+            fs.unlinkSync(normalizedOld);
+          }
         }
       }
-      image_url = `/uploads/${req.file.filename}`;
+
+      // Upload new image
+      const useCloudStorage = process.env.NODE_ENV === 'production' || 
+                              (process.env.CLOUDINARY_CLOUD_NAME && 
+                               process.env.CLOUDINARY_API_KEY && 
+                               process.env.CLOUDINARY_API_SECRET);
+
+      if (useCloudStorage && req.file.buffer) {
+        // Upload to Cloudinary
+        try {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          const ext = path.extname(req.file.originalname);
+          const filename = `product-${uniqueSuffix}${ext}`;
+          image_url = await uploadToCloudinary(req.file.buffer, filename, 'products');
+        } catch (uploadError) {
+          console.error('Cloudinary upload error:', uploadError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to upload image. Please try again.'
+          });
+        }
+      } else {
+        // Local file storage
+        image_url = `/uploads/${req.file.filename}`;
+      }
     }
 
     // Update product
@@ -230,11 +293,19 @@ const updateProduct = async (req, res, next) => {
       data: { product: updatedProduct }
     });
   } catch (error) {
-    // If there's an error and a new file was uploaded, delete it
+    // If there's an error and a new file was uploaded, try to clean it up
     if (req.file) {
-      const filePath = path.join(__dirname, '..', 'uploads', req.file.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const useCloudStorage = process.env.NODE_ENV === 'production' || 
+                              (process.env.CLOUDINARY_CLOUD_NAME && 
+                               process.env.CLOUDINARY_API_KEY && 
+                               process.env.CLOUDINARY_API_SECRET);
+      
+      if (!useCloudStorage || !req.file.buffer) {
+        // Local file cleanup
+        const filePath = path.join(__dirname, '..', 'uploads', req.file.filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
     }
     next(error);
@@ -248,11 +319,17 @@ const deleteProduct = async (req, res, next) => {
 
     // Delete associated image file if it exists
     if (product.image_url) {
-      const normalized = product.image_url.startsWith('/uploads/')
-        ? path.join(__dirname, '..', 'uploads', path.basename(product.image_url))
-        : path.join(__dirname, '..', product.image_url);
-      if (fs.existsSync(normalized)) {
-        fs.unlinkSync(normalized);
+      if (isCloudinaryUrl(product.image_url)) {
+        // Delete from Cloudinary
+        await deleteFromCloudinary(product.image_url);
+      } else {
+        // Delete local file
+        const normalized = product.image_url.startsWith('/uploads/')
+          ? path.join(__dirname, '..', 'uploads', path.basename(product.image_url))
+          : path.join(__dirname, '..', product.image_url);
+        if (fs.existsSync(normalized)) {
+          fs.unlinkSync(normalized);
+        }
       }
     }
 
