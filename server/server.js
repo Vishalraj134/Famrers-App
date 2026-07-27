@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -51,13 +51,36 @@ global.io = io;
 app.use(helmet());
 
 // CORS configuration
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['https://your-frontend-domain.com'])
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177'];
+let allowedOrigins;
+
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.ALLOWED_ORIGINS) {
+    console.warn('⚠️  WARNING: ALLOWED_ORIGINS env var is not set in production!');
+    console.warn('   Set ALLOWED_ORIGINS to your frontend URL in Railway environment variables.');
+    console.warn('   Example: ALLOWED_ORIGINS=https://your-app.vercel.app');
+    // Allow all origins temporarily so the API is not completely broken,
+    // but log a clear warning so you know to fix this.
+    allowedOrigins = true; // true = allow all origins in cors()
+  } else {
+    allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+    console.log(`✅ CORS enabled for: ${allowedOrigins.join(', ')}`);
+  }
+} else {
+  // Development: allow all common local dev ports
+  allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://localhost:5177',
+  ];
+}
 
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true
+  credentials: true,
 }));
 
 // Rate limiting
